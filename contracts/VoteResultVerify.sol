@@ -9,17 +9,17 @@ contract VoteResultVerify is UsingTellor {
     function readVoteResult(bytes32 _queryId)
         public
         view
-        returns (string memory)
+        returns (bytes memory)
     {
         (bool ifRetrieve, bytes memory _value, ) = getCurrentValue(_queryId);
         if (!ifRetrieve) return "0x";
-        return string(_value);
+        return _value;
     }
 
     function readVoteResultBefore(bytes32 _queryId, uint256 _timestamp)
         external
         view
-        returns (string memory, uint256)
+        returns (bytes memory, uint256)
     {
         // TIP: 
         //For best practices, use getDataBefore with a time buffer to allow
@@ -30,6 +30,6 @@ contract VoteResultVerify is UsingTellor {
             uint256 _timestampRetrieved
         ) = getDataBefore(_queryId, _timestamp);
         if (!_ifRetrieve) return ("0x", 0);
-        return (string(_value), _timestampRetrieved);
+        return (_value, _timestampRetrieved);
     }
 }

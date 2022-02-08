@@ -11,8 +11,8 @@ describe("Tellor verify snapshot vote results", function () {
   let tellorOracle;
 
   const queryId = h.uintTob32(1);
-  //result voting passed
-  const mockValue = "Vote Passed";
+  //result votes from proposal
+  const mockValue = [10023, 1058];
   const mocktoBytes = h.bytes(mockValue);
 
   // Set up Tellor Playground Oracle and VoteResultVerify
@@ -30,7 +30,8 @@ describe("Tellor verify snapshot vote results", function () {
     // submit value takes 4 args : queryId, value, nonce and queryData
     await tellorOracle.submitValue(queryId, mocktoBytes, 0, "0x");
     let retrievedVal = await voteResultVerify.readVoteResult(queryId);
-    expect(retrievedVal).to.equal("Vote Passed");
-    expect(h.bytes("Vote In Progress")).to.not.equal(mocktoBytes);
+    console.log(retrievedVal)
+    expect(retrievedVal).to.equal(mocktoBytes);
+    expect(h.bytes([13431,222299])).to.not.equal(mocktoBytes);
   });
 });
