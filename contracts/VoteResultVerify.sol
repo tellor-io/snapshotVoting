@@ -2,9 +2,30 @@
 pragma solidity ^0.8.0;
 
 import "usingtellor/contracts/UsingTellor.sol";
+import "./MyToken.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "hardhat/console.sol";
 
 contract VoteResultVerify is UsingTellor {
-    constructor(address payable _tellorAddress) UsingTellor(_tellorAddress) {}
+    mapping(uint256 => Proposal) public proposals;
+    uint256 private proposalID = 0;
+    MyToken private token;
+    uint256 public quorumVotesRequired;
+
+    struct Proposal {
+        uint256 proposalID;
+        address target;
+        string description;
+    }
+
+    constructor(
+        address payable _tellorAddress,
+        MyToken _token,
+        uint256 _quorumVotesRequired
+    ) UsingTellor(_tellorAddress) {
+        token = _token;
+        quorumVotesRequired = _quorumVotesRequired;
+    }
 
     function readVoteResult(bytes32 _queryId)
         public
@@ -12,8 +33,29 @@ contract VoteResultVerify is UsingTellor {
         returns (bytes memory)
     {
         (bool ifRetrieve, bytes memory _value, ) = getCurrentValue(_queryId);
-        if (!ifRetrieve) return "0x";
+        if (!ifRetrieve) return "0x0";
         return _value;
+    }
+
+    function proposeVote(address _target) external {
+        proposalID += 1;
+        proposals[proposalID].target = _target;
+        proposals[proposalID].proposalID = proposalID;
+        proposals[proposalID]
+            .description = "Mint 1000 tokens to target address";
+    }
+
+    function executeProposal(
+        uint256 _proposalID,
+        uint256 _yesAmount,
+        uint256 _noAmount
+    ) external {
+        Proposal memory proposal = proposals[_proposalID];
+        require(proposal.proposalID != 0, "Proposal not found");
+        uint256 totalVotes = _yesAmount + _noAmount;
+        require(totalVotes >= quorumVotesRequired, "Not enough votes");
+        require(_yesAmount > _noAmount, "Not enough yes votes");
+        token.mint(proposals[_proposalID].target, 1000);
     }
 
     function readVoteResultBefore(bytes32 _queryId, uint256 _timestamp)
@@ -21,7 +63,7 @@ contract VoteResultVerify is UsingTellor {
         view
         returns (bytes memory, uint256)
     {
-        // TIP: 
+        // TIP:
         //For best practices, use getDataBefore with a time buffer to allow
         // time for a value to be disputed
         (
@@ -31,5 +73,17 @@ contract VoteResultVerify is UsingTellor {
         ) = getDataBefore(_queryId, _timestamp);
         if (!_ifRetrieve) return ("0x", 0);
         return (_value, _timestampRetrieved);
+    }
+
+    function getCurrentProposalID() public view returns (uint256) {
+        return proposalID;
+    }
+
+    function getProposalTarget(uint256 _proposalID)
+        public
+        view
+        returns (address)
+    {
+        return proposals[_proposalID].target;
     }
 }
