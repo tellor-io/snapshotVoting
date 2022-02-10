@@ -8,14 +8,15 @@ import "hardhat/console.sol";
 
 contract VoteResultVerify is UsingTellor {
     mapping(uint256 => Proposal) public proposals;
-    uint256 private proposalID = 0;
-    MyToken private token;
+    uint256 public proposalID = 0;
+    MyToken public token;
     uint256 public quorumVotesRequired;
 
     struct Proposal {
         uint256 proposalID;
         address target;
         string description;
+        bytes32 queryID;
     }
 
     constructor(
@@ -33,28 +34,36 @@ contract VoteResultVerify is UsingTellor {
         returns (bytes memory)
     {
         (bool ifRetrieve, bytes memory _value, ) = getCurrentValue(_queryId);
-        if (!ifRetrieve) return "0x0";
+        if (!ifRetrieve) return "0x";
         return _value;
     }
 
-    function proposeVote(address _target) external {
+    function proposeVote(address _target, bytes32 _queryID) external {
         proposalID += 1;
         proposals[proposalID].target = _target;
         proposals[proposalID].proposalID = proposalID;
+        proposals[proposalID].queryID = _queryID;
         proposals[proposalID]
             .description = "Mint 1000 tokens to target address";
     }
 
-    function executeProposal(
-        uint256 _proposalID,
-        uint256 _yesAmount,
-        uint256 _noAmount
-    ) external {
+    function executeProposal(uint256 _proposalID) external {
+        console.log("executing proposal");
         Proposal memory proposal = proposals[_proposalID];
-        require(proposal.proposalID != 0, "Proposal not found");
-        uint256 totalVotes = _yesAmount + _noAmount;
-        require(totalVotes >= quorumVotesRequired, "Not enough votes");
-        require(_yesAmount > _noAmount, "Not enough yes votes");
+        bytes32 queryID = proposal.queryID;
+        bytes memory voteResult = readVoteResult(queryID);
+        // (uint256 yesVotes, uint256 noVotes) = abi.decode(
+        //     voteResult,
+        //     (uint256, uint256)
+        // );
+
+        uint256 yesVotes =  abi.decode(voteResult, (uint256));
+
+        console.log("yesVotes: %s", yesVotes);
+        // require(proposal.proposalID != 0, "Proposal not found");
+        // uint256 totalVotes = yesVotes + noVotes;
+        // require(totalVotes >= quorumVotesRequired, "Not enough votes");
+        // require(yesVotes > noVotes, "Not enough yes votes");
         token.mint(proposals[_proposalID].target, 1000);
     }
 
