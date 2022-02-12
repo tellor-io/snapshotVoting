@@ -52,14 +52,16 @@ contract VoteResultVerify is UsingTellor {
         Proposal memory proposal = proposals[_proposalID];
         bytes32 queryID = proposal.queryID;
         bytes memory voteResult = readVoteResult(queryID);
-        // (uint256 yesVotes, uint256 noVotes) = abi.decode(
-        //     voteResult,
-        //     (uint256, uint256)
-        // );
+        (uint256 yesVotes, uint256 noVotes) = abi.decode(
+            voteResult,
+            (uint256, uint256)
+        );
 
-        uint256 yesVotes =  abi.decode(voteResult, (uint256));
+        // uint256 yesVotes =  abi.decode(voteResult, (uint256));
 
         console.log("yesVotes: %s", yesVotes);
+        console.log("noVotes: %s", noVotes);
+
         // require(proposal.proposalID != 0, "Proposal not found");
         // uint256 totalVotes = yesVotes + noVotes;
         // require(totalVotes >= quorumVotesRequired, "Not enough votes");

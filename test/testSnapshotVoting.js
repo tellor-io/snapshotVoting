@@ -53,7 +53,6 @@ describe("Tellor verify snapshot vote results", function () {
     expect(retrievedVal).to.equal(h.bytes([value1, value2]));
   });
 
-
   it("Test proposeVote()", async function () {
     const propAddr = addr1.address;
 
@@ -70,7 +69,7 @@ describe("Tellor verify snapshot vote results", function () {
 
     await voteResultVerify.proposeVote(propAddr, queryId);
 
-    await tellorOracle.submitValue(queryId, value1, 0, "0x");
+    await tellorOracle.submitValue(queryId, "0x000000000000000000000000000000000000000000000000000000000000006400000000000000000000000000000000000000000000000000000000000000c8", 0, "0x");
 
     await voteResultVerify.executeProposal(1);
     // let balance = await myToken.balanceOf(propAddr);
