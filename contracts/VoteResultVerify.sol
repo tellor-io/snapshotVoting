@@ -27,7 +27,6 @@ contract VoteResultVerify is UsingTellor {
         quorumVotesRequired = _quorumVotesRequired;
     }
 
-
     function proposeVote(address _target) external {
         proposalID += 1;
         proposals[proposalID].target = _target;
@@ -36,15 +35,18 @@ contract VoteResultVerify is UsingTellor {
             .description = "Mint 1000 tokens to target address";
     }
 
-    function executeProposal(
-        uint256 _proposalID
-    ) external {
+    function executeProposal(uint256 _proposalID) external {
         Proposal memory proposal = proposals[_proposalID];
         require(proposal.proposalID != 0, "Proposal not found");
-        bytes32 _queryID = keccak256(abi.encode("Snapshot",abi.encode(address(this),_proposalID)));
+        bytes32 _queryID = keccak256(
+            abi.encode("Snapshot", abi.encode(address(this), _proposalID))
+        );
         uint256 _yesAmount;
         uint256 _noAmount;
-        (_yesAmount,_noAmount) = readVoteResultBefore(_queryID,block.timestamp - 1 hours);
+        (_yesAmount, _noAmount) = readVoteResultBefore(
+            _queryID,
+            block.timestamp - 1 hours
+        );
         uint256 totalVotes = _yesAmount + _noAmount;
         require(totalVotes >= quorumVotesRequired, "Not enough votes");
         require(_yesAmount > _noAmount, "Not enough yes votes");
@@ -59,15 +61,15 @@ contract VoteResultVerify is UsingTellor {
         // TIP:
         //For best practices, use getDataBefore with a time buffer to allow
         // time for a value to be disputed
-        (
-            bool _ifRetrieve,
-            bytes memory _value,
-        ) = getDataBefore(_queryId, _timestamp);
+        (bool _ifRetrieve, bytes memory _value, ) = getDataBefore(
+            _queryId,
+            _timestamp
+        );
         require(_ifRetrieve, "must get data to execute vote");
         uint256 _yes;
         uint256 _no;
-        (_yes,_no) = abi.decode(_value,(uint256,uint256));
-        return (_yes,_no);
+        (_yes, _no) = abi.decode(_value, (uint256, uint256));
+        return (_yes, _no);
     }
 
     function getCurrentProposalID() public view returns (uint256) {
