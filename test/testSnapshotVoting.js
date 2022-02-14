@@ -11,10 +11,16 @@ describe("Tellor verify snapshot vote results", function () {
   let tellorOracle;
   let myToken;
 
-  const queryId = h.uintTob32(1);
+  let owner, addr1, addr2;
+  const proposalID = 1;
   //result votes from proposal
   const value1 = 10023;
   const value2 = 1058;
+
+  let valuesEncoded;
+
+  abiCoder = new ethers.utils.AbiCoder();
+  let queryDataArgs, queryData, queryID;
 
   // Set up Tellor Playground Oracle and VoteResultVerify
   beforeEach(async function () {
@@ -36,44 +42,52 @@ describe("Tellor verify snapshot vote results", function () {
     );
     await voteResultVerify.deployed();
 
-    [owner, addr1, addr2] = await ethers.getSigners();
-  });
+    queryDataArgs = abiCoder.encode(
+      ["uint256", "uint256"],
+      [voteResultVerify.address, proposalID]
+    );
 
-  it("Test Constructor()", async function () {
-    assert(await voteResultVerify.token() == myToken.address, "token address should be correct");
-    assert(await voteResultVerify.quorumVotesRequired() == 10000, "quarumVotesRequired should be correct");
+    queryData = abiCoder.encode(
+      ["string", "bytes"],
+      ["Snapshot", queryDataArgs]
+    );
+
+    queryID = ethers.utils.keccak256(queryData);
+
+    [owner, addr1, addr2] = await ethers.getSigners();
+    valuesEncoded = abiCoder.encode(["uint256", "uint256"], [value1, value2]);
   });
 
   it("Test readVoteResult()", async function () {
     // submit value takes 4 args : queryId, value, nonce and queryData
 
-    await tellorOracle.submitValue(queryId, h.bytes([value1, value2]), 0, "0x");
+    await tellorOracle.submitValue(queryID, valuesEncoded, 0, queryData);
 
-    const retrievedVal = await voteResultVerify.readVoteResult(queryId);
-    expect(retrievedVal).to.equal(h.bytes([value1, value2]));
+    await h.advanceTime(10000);
+
+    blocky1 = await h.getBlock();
+
+    retrievedVal = await voteResultVerify.readVoteResultBefore(
+      queryID,
+      blocky1.timestamp - 9000
+    );
+    expect(parseInt(retrievedVal)).to.equal(value1, value2);
   });
 
-
   it("Test proposeVote()", async function () {
-    const propAddr = addr1.address;
-
-    await voteResultVerify.proposeVote(propAddr, queryId);
+    await voteResultVerify.proposeVote(addr1.address);
     let propID = await voteResultVerify.getCurrentProposalID();
     expect(propID).to.equal(1);
-
     let propTarget = await voteResultVerify.getProposalTarget(1);
-    expect(propTarget).to.equal(propAddr);
+    expect(propTarget).to.equal(addr1.address);
   });
 
   it("Test executeProposal()", async function () {
-    const propAddr = addr1.address;
-
-    await voteResultVerify.proposeVote(propAddr, queryId);
-
-    await tellorOracle.submitValue(queryId, value1, 0, "0x");
-
+    await voteResultVerify.proposeVote(addr1.address);
+    await tellorOracle.submitValue(queryID, valuesEncoded, 0, queryData);
+    await h.advanceTime(10000);
     await voteResultVerify.executeProposal(1);
-    // let balance = await myToken.balanceOf(propAddr);
-    // expect(balance).to.equal(1000);
+    let balance = await myToken.balanceOf(addr1.address);
+    expect(balance).to.equal(1000);
   });
 });

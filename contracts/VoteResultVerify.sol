@@ -8,15 +8,14 @@ import "hardhat/console.sol";
 
 contract VoteResultVerify is UsingTellor {
     mapping(uint256 => Proposal) public proposals;
-    uint256 public proposalID = 0;
-    MyToken public token;
+    uint256 private proposalID = 0;
+    MyToken private token;
     uint256 public quorumVotesRequired;
 
     struct Proposal {
         uint256 proposalID;
         address target;
         string description;
-        bytes32 queryID;
     }
 
     constructor(
@@ -28,60 +27,49 @@ contract VoteResultVerify is UsingTellor {
         quorumVotesRequired = _quorumVotesRequired;
     }
 
-    function readVoteResult(bytes32 _queryId)
-        public
-        view
-        returns (bytes memory)
-    {
-        (bool ifRetrieve, bytes memory _value, ) = getCurrentValue(_queryId);
-        if (!ifRetrieve) return "0x";
-        return _value;
-    }
-
-    function proposeVote(address _target, bytes32 _queryID) external {
+    function proposeVote(address _target) external {
         proposalID += 1;
         proposals[proposalID].target = _target;
         proposals[proposalID].proposalID = proposalID;
-        proposals[proposalID].queryID = _queryID;
         proposals[proposalID]
             .description = "Mint 1000 tokens to target address";
     }
 
     function executeProposal(uint256 _proposalID) external {
-        console.log("executing proposal");
         Proposal memory proposal = proposals[_proposalID];
-        bytes32 queryID = proposal.queryID;
-        bytes memory voteResult = readVoteResult(queryID);
-        // (uint256 yesVotes, uint256 noVotes) = abi.decode(
-        //     voteResult,
-        //     (uint256, uint256)
-        // );
-
-        uint256 yesVotes =  abi.decode(voteResult, (uint256));
-
-        console.log("yesVotes: %s", yesVotes);
-        // require(proposal.proposalID != 0, "Proposal not found");
-        // uint256 totalVotes = yesVotes + noVotes;
-        // require(totalVotes >= quorumVotesRequired, "Not enough votes");
-        // require(yesVotes > noVotes, "Not enough yes votes");
+        require(proposal.proposalID != 0, "Proposal not found");
+        bytes32 _queryID = keccak256(
+            abi.encode("Snapshot", abi.encode(address(this), _proposalID))
+        );
+        uint256 _yesAmount;
+        uint256 _noAmount;
+        (_yesAmount, _noAmount) = readVoteResultBefore(
+            _queryID,
+            block.timestamp - 1 hours
+        );
+        uint256 totalVotes = _yesAmount + _noAmount;
+        require(totalVotes >= quorumVotesRequired, "Not enough votes");
+        require(_yesAmount > _noAmount, "Not enough yes votes");
         token.mint(proposals[_proposalID].target, 1000);
     }
 
     function readVoteResultBefore(bytes32 _queryId, uint256 _timestamp)
-        external
+        public
         view
-        returns (bytes memory, uint256)
+        returns (uint256, uint256)
     {
         // TIP:
         //For best practices, use getDataBefore with a time buffer to allow
         // time for a value to be disputed
-        (
-            bool _ifRetrieve,
-            bytes memory _value,
-            uint256 _timestampRetrieved
-        ) = getDataBefore(_queryId, _timestamp);
-        if (!_ifRetrieve) return ("0x", 0);
-        return (_value, _timestampRetrieved);
+        (bool _ifRetrieve, bytes memory _value, ) = getDataBefore(
+            _queryId,
+            _timestamp
+        );
+        require(_ifRetrieve, "must get data to execute vote");
+        uint256 _yes;
+        uint256 _no;
+        (_yes, _no) = abi.decode(_value, (uint256, uint256));
+        return (_yes, _no);
     }
 
     function getCurrentProposalID() public view returns (uint256) {
