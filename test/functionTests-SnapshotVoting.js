@@ -21,6 +21,7 @@ describe("Tellor verify snapshot vote results", function () {
 
   abiCoder = new ethers.utils.AbiCoder();
   let queryDataArgs, queryData, queryID;
+  let queryDataArgs2, queryData2, queryID2;
 
   // Set up Tellor Playground Oracle and SnapshotVoting
   beforeEach(async function () {
@@ -28,13 +29,8 @@ describe("Tellor verify snapshot vote results", function () {
     tellorOracle = await TellorOracle.deploy();
     await tellorOracle.deployed();
 
-    const SnapshotVoting = await ethers.getContractFactory(
-      "SnapshotVoting"
-    );
-    snapshotVoting = await SnapshotVoting.deploy(
-      tellorOracle.address,
-      10000
-    );
+    const SnapshotVoting = await ethers.getContractFactory("SnapshotVoting");
+    snapshotVoting = await SnapshotVoting.deploy(tellorOracle.address, 10000);
     await snapshotVoting.deployed();
 
     const MyToken = await ethers.getContractFactory("MyToken");
@@ -55,6 +51,18 @@ describe("Tellor verify snapshot vote results", function () {
 
     queryID = ethers.utils.keccak256(queryData);
 
+    queryDataArgs2 = abiCoder.encode(
+      ["uint256", "uint256"],
+      [snapshotVoting.address, 5]
+    );
+
+    queryData2 = abiCoder.encode(
+      ["string", "bytes"],
+      ["Snapshot", queryDataArgs2]
+    );
+
+    queryID2 = ethers.utils.keccak256(queryData2);
+
     [owner, addr1, addr2] = await ethers.getSigners();
     valuesEncoded = abiCoder.encode(["uint256", "uint256"], [value1, value2]);
   });
@@ -65,30 +73,81 @@ describe("Tellor verify snapshot vote results", function () {
     await tellorOracle.submitValue(queryID, valuesEncoded, 0, queryData);
 
     await h.advanceTime(10000);
-
     blocky1 = await h.getBlock();
 
-    retrievedVal = await snapshotVoting.readVoteResultBefore(
-      queryID,
-      blocky1.timestamp - 9000
+    //returns true if value is found
+    expect(
+      (await snapshotVoting.getDataBefore(queryID, blocky1.timestamp))[0]
+    ).to.equal(true);
+
+    //returns false if value is not found
+    expect(
+      (await snapshotVoting.getDataBefore(queryID2, blocky1.timestamp))[0]
+    ).to.equal(false);
+
+    expect(
+      parseInt(
+        await snapshotVoting.readVoteResultBefore(queryID, blocky1.timestamp)
+      )
+    ).to.equal(value1, value2);
+
+    await h.expectThrow(
+      snapshotVoting.readVoteResultBefore(queryID2, blocky1.timestamp)
     );
-    expect(parseInt(retrievedVal)).to.equal(value1, value2);
   });
 
   it("Test proposeVote()", async function () {
     await snapshotVoting.proposeVote(addr1.address);
-    let propID = await snapshotVoting.getCurrentProposalID();
-    expect(propID).to.equal(1);
-    let propTarget = await snapshotVoting.getProposalTarget(1);
-    expect(propTarget).to.equal(addr1.address);
+    expect(await snapshotVoting.getCurrentProposalID()).to.equal(1);
+    expect(await snapshotVoting.getProposalTarget(1)).to.equal(addr1.address);
   });
 
   it("Test executeProposal()", async function () {
+    //throws when proposalID not found
     await snapshotVoting.proposeVote(addr1.address);
     await tellorOracle.submitValue(queryID, valuesEncoded, 0, queryData);
     await h.advanceTime(10000);
+    await h.expectThrow(snapshotVoting.executeProposal(0));
+
+    //throws when not enough votes (min. 10 000)needed
+    await snapshotVoting.proposeVote(addr1.address);
+    await tellorOracle.submitValue(
+      queryID,
+      abiCoder.encode(["uint256", "uint256"], [4000, 3000]),
+      1,
+      queryData
+    );
+    await h.advanceTime(10000);
+    await h.expectThrow(snapshotVoting.executeProposal(2));
+
+    //throws when not enough yes votes(51% needed)
+    await snapshotVoting.proposeVote(addr1.address);
+    await tellorOracle.submitValue(
+      queryID,
+      abiCoder.encode(["uint256", "uint256"], [5000, 6000]),
+      2,
+      queryData
+    );
+    await h.advanceTime(10000);
+    await h.expectThrow(snapshotVoting.executeProposal(3));
+
+    //succeeds
+    await tellorOracle.submitValue(queryID, valuesEncoded, 3, queryData);
+    await h.advanceTime(10000);
     await snapshotVoting.executeProposal(1);
-    let balance = await myToken.balanceOf(addr1.address);
-    expect(balance).to.equal(1000);
+    expect(await myToken.balanceOf(addr1.address)).to.equal(1000);
+
+    //throws when executing a CLOSED proposal
+    await h.expectThrow(snapshotVoting.executeProposal(1));
+  });
+
+  it("Test setRewardsToken()", async function () {
+    //throws when deployed with a token
+    await h.expectThrow(snapshotVoting.setRewardsToken(addr2.address));
+  });
+
+  it("Test mint()", async function () {
+    //throws when minting as non governance address
+    await h.expectThrow(myToken.mint(owner.address, 100));
   });
 });

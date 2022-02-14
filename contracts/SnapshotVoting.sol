@@ -13,10 +13,13 @@ contract SnapshotVoting is UsingTellor {
     uint256 public quorumVotesRequired;
     address private owner;
 
+    enum Status{OPEN, CLOSED}
+
     struct Proposal {
         uint256 proposalID;
         address target;
         string description;
+        Status status;
     }
 
     constructor(
@@ -31,6 +34,7 @@ contract SnapshotVoting is UsingTellor {
         proposalID += 1;
         proposals[proposalID].target = _target;
         proposals[proposalID].proposalID = proposalID;
+        proposals[proposalID].status = Status.OPEN;
         proposals[proposalID]
             .description = "Mint 1000 tokens to target address";
     }
@@ -38,6 +42,7 @@ contract SnapshotVoting is UsingTellor {
     function executeProposal(uint256 _proposalID) external {
         Proposal memory proposal = proposals[_proposalID];
         require(proposal.proposalID != 0, "Proposal not found");
+        require(proposal.status == Status.OPEN, "Proposal is closed");
         bytes32 _queryID = keccak256(
             abi.encode("Snapshot", abi.encode(address(this), _proposalID))
         );
@@ -50,6 +55,7 @@ contract SnapshotVoting is UsingTellor {
         uint256 totalVotes = _yesAmount + _noAmount;
         require(totalVotes >= quorumVotesRequired, "Not enough votes");
         require(_yesAmount > _noAmount, "Not enough yes votes");
+        proposals[_proposalID].status = Status.CLOSED;
         token.mint(proposals[_proposalID].target, 1000);
     }
 
@@ -72,7 +78,7 @@ contract SnapshotVoting is UsingTellor {
         return (_yes, _no);
     }
 
-    function getCurrentProposalID() public view returns (uint256) {
+    function getCurrentProposalID() external view returns (uint256) {
         return proposalID;
     }
 
@@ -84,7 +90,7 @@ contract SnapshotVoting is UsingTellor {
     }
 
     function getProposalTarget(uint256 _proposalID)
-        public
+        external
         view
         returns (address)
     {
