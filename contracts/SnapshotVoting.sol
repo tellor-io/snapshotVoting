@@ -6,11 +6,12 @@ import "./MyToken.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "hardhat/console.sol";
 
-contract VoteResultVerify is UsingTellor {
+contract SnapshotVoting is UsingTellor {
     mapping(uint256 => Proposal) public proposals;
     uint256 private proposalID = 0;
     MyToken private token;
     uint256 public quorumVotesRequired;
+    address private owner;
 
     struct Proposal {
         uint256 proposalID;
@@ -20,11 +21,10 @@ contract VoteResultVerify is UsingTellor {
 
     constructor(
         address payable _tellorAddress,
-        MyToken _token,
         uint256 _quorumVotesRequired
     ) UsingTellor(_tellorAddress) {
-        token = _token;
         quorumVotesRequired = _quorumVotesRequired;
+        owner = msg.sender;
     }
 
     function proposeVote(address _target) external {
@@ -74,6 +74,13 @@ contract VoteResultVerify is UsingTellor {
 
     function getCurrentProposalID() public view returns (uint256) {
         return proposalID;
+    }
+
+    function setRewardsToken(address myToken) external{
+        require(msg.sender == owner, "Only owner can set token");
+        token = MyToken(myToken);
+        //revoke ownership
+        owner = 0x000000000000000000000000000000000000dEaD;
     }
 
     function getProposalTarget(uint256 _proposalID)

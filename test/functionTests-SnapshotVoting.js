@@ -7,7 +7,7 @@ const {
 const h = require("usingtellor/test/helpers/helpers.js");
 
 describe("Tellor verify snapshot vote results", function () {
-  let voteResultVerify;
+  let snapshotVoting;
   let tellorOracle;
   let myToken;
 
@@ -22,29 +22,30 @@ describe("Tellor verify snapshot vote results", function () {
   abiCoder = new ethers.utils.AbiCoder();
   let queryDataArgs, queryData, queryID;
 
-  // Set up Tellor Playground Oracle and VoteResultVerify
+  // Set up Tellor Playground Oracle and SnapshotVoting
   beforeEach(async function () {
     const TellorOracle = await ethers.getContractFactory(abi, bytecode);
     tellorOracle = await TellorOracle.deploy();
     await tellorOracle.deployed();
 
-    const MyToken = await ethers.getContractFactory("MyToken");
-    myToken = await MyToken.deploy("MyToken", "MYT");
-    await myToken.deployed();
-
-    const VoteResultVerify = await ethers.getContractFactory(
-      "VoteResultVerify"
+    const SnapshotVoting = await ethers.getContractFactory(
+      "SnapshotVoting"
     );
-    voteResultVerify = await VoteResultVerify.deploy(
+    snapshotVoting = await SnapshotVoting.deploy(
       tellorOracle.address,
-      myToken.address,
       10000
     );
-    await voteResultVerify.deployed();
+    await snapshotVoting.deployed();
+
+    const MyToken = await ethers.getContractFactory("MyToken");
+    myToken = await MyToken.deploy(snapshotVoting.address);
+    await myToken.deployed();
+
+    await snapshotVoting.setRewardsToken(myToken.address);
 
     queryDataArgs = abiCoder.encode(
       ["uint256", "uint256"],
-      [voteResultVerify.address, proposalID]
+      [snapshotVoting.address, proposalID]
     );
 
     queryData = abiCoder.encode(
@@ -58,7 +59,7 @@ describe("Tellor verify snapshot vote results", function () {
     valuesEncoded = abiCoder.encode(["uint256", "uint256"], [value1, value2]);
   });
 
-  it("Test readVoteResult()", async function () {
+  it("Test readVoteResultBefore()", async function () {
     // submit value takes 4 args : queryId, value, nonce and queryData
 
     await tellorOracle.submitValue(queryID, valuesEncoded, 0, queryData);
@@ -67,7 +68,7 @@ describe("Tellor verify snapshot vote results", function () {
 
     blocky1 = await h.getBlock();
 
-    retrievedVal = await voteResultVerify.readVoteResultBefore(
+    retrievedVal = await snapshotVoting.readVoteResultBefore(
       queryID,
       blocky1.timestamp - 9000
     );
@@ -75,18 +76,18 @@ describe("Tellor verify snapshot vote results", function () {
   });
 
   it("Test proposeVote()", async function () {
-    await voteResultVerify.proposeVote(addr1.address);
-    let propID = await voteResultVerify.getCurrentProposalID();
+    await snapshotVoting.proposeVote(addr1.address);
+    let propID = await snapshotVoting.getCurrentProposalID();
     expect(propID).to.equal(1);
-    let propTarget = await voteResultVerify.getProposalTarget(1);
+    let propTarget = await snapshotVoting.getProposalTarget(1);
     expect(propTarget).to.equal(addr1.address);
   });
 
   it("Test executeProposal()", async function () {
-    await voteResultVerify.proposeVote(addr1.address);
+    await snapshotVoting.proposeVote(addr1.address);
     await tellorOracle.submitValue(queryID, valuesEncoded, 0, queryData);
     await h.advanceTime(10000);
-    await voteResultVerify.executeProposal(1);
+    await snapshotVoting.executeProposal(1);
     let balance = await myToken.balanceOf(addr1.address);
     expect(balance).to.equal(1000);
   });

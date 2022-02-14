@@ -4,11 +4,15 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract MyToken is ERC20 {
-    constructor(string memory name, string memory symbol) ERC20(name, symbol) {
 
+    address private governAddr;
+
+    constructor(address _governAddr) ERC20("MyToken", "MYT") {
+        governAddr = _governAddr;
     }
 
-    function mint(address to, uint256 amount) public {
-        _mint(to, amount);
+    function mint(address _to, uint256 _amount) public {
+        require(msg.sender == governAddr, "Only the governor can mint");
+        _mint(_to, _amount);
     }
 }
