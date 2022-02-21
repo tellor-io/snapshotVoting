@@ -13,7 +13,10 @@ contract SnapshotVoting is UsingTellor {
     uint256 public quorumVotesRequired;
     address private owner;
 
-    enum Status{OPEN, CLOSED}
+    enum Status {
+        OPEN,
+        CLOSED
+    }
 
     struct Proposal {
         uint256 proposalID;
@@ -22,10 +25,9 @@ contract SnapshotVoting is UsingTellor {
         Status status;
     }
 
-    constructor(
-        address payable _tellorAddress,
-        uint256 _quorumVotesRequired
-    ) UsingTellor(_tellorAddress) {
+    constructor(address payable _tellorAddress, uint256 _quorumVotesRequired)
+        UsingTellor(_tellorAddress)
+    {
         quorumVotesRequired = _quorumVotesRequired;
         owner = msg.sender;
     }
@@ -82,7 +84,7 @@ contract SnapshotVoting is UsingTellor {
         return proposalID;
     }
 
-    function setRewardsToken(address myToken) external{
+    function setRewardsToken(address myToken) external {
         require(msg.sender == owner, "Only owner can set token");
         token = MyToken(myToken);
         //revoke ownership

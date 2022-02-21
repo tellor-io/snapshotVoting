@@ -69,18 +69,17 @@ describe("Tellor verify snapshot vote results", function () {
 
   it("Test readVoteResultBefore()", async function () {
     // submit value takes 4 args : queryId, value, nonce and queryData
-
     await tellorOracle.submitValue(queryID, valuesEncoded, 0, queryData);
 
     await h.advanceTime(10000);
     blocky1 = await h.getBlock();
 
-    //returns true if value is found
+    //return true if value is found
     expect(
       (await snapshotVoting.getDataBefore(queryID, blocky1.timestamp))[0]
     ).to.equal(true);
 
-    //returns false if value is not found
+    //return false if value is not found
     expect(
       (await snapshotVoting.getDataBefore(queryID2, blocky1.timestamp))[0]
     ).to.equal(false);
@@ -103,13 +102,13 @@ describe("Tellor verify snapshot vote results", function () {
   });
 
   it("Test executeProposal()", async function () {
-    //throws when proposalID not found
+    //throw when proposalID not found
     await snapshotVoting.proposeVote(addr1.address);
     await tellorOracle.submitValue(queryID, valuesEncoded, 0, queryData);
     await h.advanceTime(10000);
     await h.expectThrow(snapshotVoting.executeProposal(0));
 
-    //throws when not enough votes (min. 10 000)needed
+    //throw when not enough votes (min. 10 000)needed
     await snapshotVoting.proposeVote(addr1.address);
     await tellorOracle.submitValue(
       queryID,
@@ -120,7 +119,7 @@ describe("Tellor verify snapshot vote results", function () {
     await h.advanceTime(10000);
     await h.expectThrow(snapshotVoting.executeProposal(2));
 
-    //throws when not enough yes votes(51% needed)
+    //throw when not enough yes votes(51% needed)
     await snapshotVoting.proposeVote(addr1.address);
     await tellorOracle.submitValue(
       queryID,
@@ -131,23 +130,23 @@ describe("Tellor verify snapshot vote results", function () {
     await h.advanceTime(10000);
     await h.expectThrow(snapshotVoting.executeProposal(3));
 
-    //succeeds
+    //succeed
     await tellorOracle.submitValue(queryID, valuesEncoded, 3, queryData);
     await h.advanceTime(10000);
     await snapshotVoting.executeProposal(1);
     expect(await myToken.balanceOf(addr1.address)).to.equal(1000);
 
-    //throws when executing a CLOSED proposal
+    //throw when executing a CLOSED proposal
     await h.expectThrow(snapshotVoting.executeProposal(1));
   });
 
   it("Test setRewardsToken()", async function () {
-    //throws when deployed with a token
+    //throw when deployed with a token
     await h.expectThrow(snapshotVoting.setRewardsToken(addr2.address));
   });
 
   it("Test mint()", async function () {
-    //throws when minting as non governance address
+    //throw when minting as non governance address
     await h.expectThrow(myToken.mint(owner.address, 100));
   });
 });
