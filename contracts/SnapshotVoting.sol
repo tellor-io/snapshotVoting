@@ -30,6 +30,7 @@ contract SnapshotVoting is UsingTellor {
     {
         quorumVotesRequired = _quorumVotesRequired;
         owner = msg.sender;
+        token = new MyToken(address(this));
     }
 
     function proposeVote(address _target) external {
@@ -84,18 +85,15 @@ contract SnapshotVoting is UsingTellor {
         return proposalID;
     }
 
-    function setRewardsToken(address myToken) external {
-        require(msg.sender == owner, "Only owner can set token");
-        token = MyToken(myToken);
-        //revoke ownership
-        owner = 0x000000000000000000000000000000000000dEaD;
-    }
-
     function getProposalTarget(uint256 _proposalID)
         external
         view
         returns (address)
     {
         return proposals[_proposalID].target;
+    }
+
+    function getTokenAddress() external view returns (address) {
+        return address(token);
     }
 }

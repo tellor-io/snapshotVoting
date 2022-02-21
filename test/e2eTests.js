@@ -24,10 +24,7 @@ describe("End-to-End Tests", function () {
     await snapshotVoting.deployed();
 
     const MyToken = await ethers.getContractFactory("MyToken");
-    myToken = await MyToken.deploy(snapshotVoting.address);
-    await myToken.deployed();
-
-    await snapshotVoting.setRewardsToken(myToken.address);
+    myToken = await MyToken.attach(snapshotVoting.getTokenAddress());
 
     addresses = await ethers.getSigners();
   });

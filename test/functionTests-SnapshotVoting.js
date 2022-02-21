@@ -34,10 +34,7 @@ describe("Tellor verify snapshot vote results", function () {
     await snapshotVoting.deployed();
 
     const MyToken = await ethers.getContractFactory("MyToken");
-    myToken = await MyToken.deploy(snapshotVoting.address);
-    await myToken.deployed();
-
-    await snapshotVoting.setRewardsToken(myToken.address);
+    myToken = await MyToken.attach(snapshotVoting.getTokenAddress());
 
     queryDataArgs = abiCoder.encode(
       ["uint256", "uint256"],
@@ -138,11 +135,6 @@ describe("Tellor verify snapshot vote results", function () {
 
     //throw when executing a CLOSED proposal
     await h.expectThrow(snapshotVoting.executeProposal(1));
-  });
-
-  it("Test setRewardsToken()", async function () {
-    //throw when deployed with a token
-    await h.expectThrow(snapshotVoting.setRewardsToken(addr2.address));
   });
 
   it("Test mint()", async function () {
