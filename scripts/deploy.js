@@ -64,7 +64,7 @@ async function deploySnapshotVoting(_network, _pk, _nodeURL) {
 deploySnapshotVoting(
   "rinkeby",
   process.env.PRIVATE_KEY,
-  process.env.NFURA_API_KEY
+  process.env.INFURA_API_KEY
 )
   .then(() => process.exit(0))
   .catch((error) => {
