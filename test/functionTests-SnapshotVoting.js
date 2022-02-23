@@ -34,7 +34,7 @@ describe("Tellor verify snapshot vote results", function () {
     await snapshotVoting.deployed();
 
     const MyToken = await ethers.getContractFactory("MyToken");
-    myToken = await MyToken.attach(snapshotVoting.getTokenAddress());
+    myToken = MyToken.attach(snapshotVoting.getTokenAddress());
 
     queryDataArgs = abiCoder.encode(
       ["uint256", "uint256"],

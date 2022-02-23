@@ -49,9 +49,7 @@ contract SnapshotVoting is UsingTellor {
         bytes32 _queryID = keccak256(
             abi.encode("Snapshot", abi.encode(address(this), _proposalID))
         );
-        uint256 _yesAmount;
-        uint256 _noAmount;
-        (_yesAmount, _noAmount) = readVoteResultBefore(
+        (uint256 _yesAmount, uint256 _noAmount) = readVoteResultBefore(
             _queryID,
             block.timestamp - 1 hours
         );
@@ -75,9 +73,7 @@ contract SnapshotVoting is UsingTellor {
             _timestamp
         );
         require(_ifRetrieve, "must get data to execute vote");
-        uint256 _yes;
-        uint256 _no;
-        (_yes, _no) = abi.decode(_value, (uint256, uint256));
+        (uint256 _yes, uint256 _no) = abi.decode(_value, (uint256, uint256));
         return (_yes, _no);
     }
 
