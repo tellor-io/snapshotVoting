@@ -3,21 +3,33 @@ pragma solidity ^0.8.0;
 
 import "usingtellor/contracts/UsingTellor.sol";
 import "./MyToken.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "hardhat/console.sol";
 
 contract SnapshotVoting is UsingTellor {
-    mapping(uint256 => Proposal) public proposals;
-    uint256 private proposalID = 0;
-    MyToken private token;
-    uint256 public quorumVotesRequired;
-    address private owner;
+    // Events
+    event SnapshotVotingCreated(
+        address indexed _snapshotVotingAddress,
+        uint256 proposalID
+    );
+    event SnapshotVotingExecuted(
+        address indexed _snapshotVotingAddress,
+        uint256 proposalID
+    );
 
+    // Storage
+    mapping(uint256 => Proposal) public proposals;
+
+    uint256 private proposalID = 0;
+    uint256 public quorumVotes;
+
+    MyToken private token;
+
+    // Enums
     enum Status {
         OPEN,
         CLOSED
     }
 
+    // Structs
     struct Proposal {
         uint256 proposalID;
         address target;
@@ -25,14 +37,23 @@ contract SnapshotVoting is UsingTellor {
         Status status;
     }
 
-    constructor(address payable _tellorAddress, uint256 _quorumVotesRequired)
+    /*Functions*/
+    /**
+     * @dev Initializes the contract with the parameters, initializes the token
+     * @param _tellorAddress address of Tellor contract
+     * @param _quorumVotes total votes required to execute the proposal
+     */
+    constructor(address payable _tellorAddress, uint256 _quorumVotes)
         UsingTellor(_tellorAddress)
     {
-        quorumVotesRequired = _quorumVotesRequired;
-        owner = msg.sender;
+        quorumVotes = _quorumVotes;
         token = new MyToken(address(this));
     }
 
+    /**
+     * @dev Create a proposal
+     * @param _target address of the proposal
+     */
     function proposeVote(address _target) external {
         proposalID += 1;
         proposals[proposalID].target = _target;
@@ -40,8 +61,14 @@ contract SnapshotVoting is UsingTellor {
         proposals[proposalID].status = Status.OPEN;
         proposals[proposalID]
             .description = "Mint 1000 tokens to target address";
+
+        emit SnapshotVotingCreated(_target, proposalID);
     }
 
+    /**
+     * @dev Execute a chosen proposal
+     * @param _proposalID identifier of the proposal
+     */
     function executeProposal(uint256 _proposalID) external {
         Proposal memory proposal = proposals[_proposalID];
         require(proposal.proposalID != 0, "Proposal not found");
@@ -54,12 +81,20 @@ contract SnapshotVoting is UsingTellor {
             block.timestamp - 1 hours
         );
         uint256 totalVotes = _yesAmount + _noAmount;
-        require(totalVotes >= quorumVotesRequired, "Not enough votes");
+        require(totalVotes >= quorumVotes, "Not enough votes");
         require(_yesAmount > _noAmount, "Not enough yes votes");
         proposals[_proposalID].status = Status.CLOSED;
         token.mint(proposals[_proposalID].target, 1000);
+
+        emit SnapshotVotingExecuted(proposal.target, _proposalID);
     }
 
+    /**
+     * @dev Get the proposal result
+     * @param _queryId id of desired data feed
+     * @param _timestamp to retrieve data from
+     * @return result of the proposal
+     */
     function readVoteResultBefore(bytes32 _queryId, uint256 _timestamp)
         public
         view
@@ -77,10 +112,19 @@ contract SnapshotVoting is UsingTellor {
         return (_yes, _no);
     }
 
+    /**
+     * @dev return current proposal count
+     * @return uint256 proposal count
+     */
     function getCurrentProposalID() external view returns (uint256) {
         return proposalID;
     }
 
+    /**
+     * @dev Returns proposal target
+     * @param _proposalID Proposal ID
+     * @return address of proposal target
+     */
     function getProposalTarget(uint256 _proposalID)
         external
         view
@@ -89,6 +133,10 @@ contract SnapshotVoting is UsingTellor {
         return proposals[_proposalID].target;
     }
 
+    /**
+     * @dev Returns the token contract address
+     * @return address of token contract
+     */
     function getTokenAddress() external view returns (address) {
         return address(token);
     }
