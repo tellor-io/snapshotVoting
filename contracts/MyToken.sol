@@ -3,6 +3,12 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
+/**
+ @author Tellor Inc.
+ @title Mytoken
+ @dev This is the MyToken contract which is used to mint tokens to users who passed the
+ *   proposal voting process.
+*/
 contract MyToken is ERC20 {
     // Storage
     address private governAddr;

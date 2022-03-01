@@ -30,8 +30,8 @@ describe("End-to-End Tests", function () {
   });
 
   it("Create and execute three different proposals", async function () {
-    for (let i = 1; i < 4; i++) {
-      await snapshotVoting.proposeVote(addresses[i].address);
+    for (let i = 1; i <= 3; i++) {
+      await snapshotVoting.proposeVote(addresses[i].address,i);
 
       queryDataArgs = abiCoder.encode(
         ["uint256", "uint256"],
@@ -62,7 +62,5 @@ describe("End-to-End Tests", function () {
     expect(await myToken.balanceOf(addresses[1].address)).to.equal(0);
     expect(await myToken.balanceOf(addresses[2].address)).to.equal(1000);
     expect(await myToken.balanceOf(addresses[3].address)).to.equal(1000);
-
-    expect(await snapshotVoting.getCurrentProposalID()).to.equal(3);
   });
 });

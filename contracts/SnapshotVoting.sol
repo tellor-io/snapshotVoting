@@ -1,16 +1,22 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 import "usingtellor/contracts/UsingTellor.sol";
 import "./MyToken.sol";
 
+/**
+ @author Tellor Inc.
+ @title SnapshotVoting
+ @dev This is the SnapshotVoting contract which defines the functionality for
+ * using Tellor to verify snapshot vote results
+*/
 contract SnapshotVoting is UsingTellor {
     // Events
-    event SnapshotVotingCreated(
+    event ProposalCreated(
         address indexed _snapshotVotingAddress,
         uint256 proposalID
     );
-    event SnapshotVotingExecuted(
+    event ProposalExecuted(
         address indexed _snapshotVotingAddress,
         uint256 proposalID
     );
@@ -18,20 +24,23 @@ contract SnapshotVoting is UsingTellor {
     // Storage
     mapping(uint256 => Proposal) public proposals;
 
-    uint256 private proposalID = 0;
-    uint256 public quorumVotes;
+    uint256 private quorumVotes;
 
     MyToken private token;
+    address private arbitrator;
 
     // Enums
     enum Status {
         OPEN,
-        CLOSED
+        CLOSED,
+        INVALID
     }
 
     // Structs
     struct Proposal {
         uint256 proposalID;
+        uint256 yesVotes;
+        uint256 noVotes;
         address target;
         string description;
         Status status;
@@ -46,6 +55,7 @@ contract SnapshotVoting is UsingTellor {
     constructor(address payable _tellorAddress, uint256 _quorumVotes)
         UsingTellor(_tellorAddress)
     {
+        arbitrator = msg.sender;
         quorumVotes = _quorumVotes;
         token = new MyToken(address(this));
     }
@@ -53,49 +63,55 @@ contract SnapshotVoting is UsingTellor {
     /**
      * @dev Create a proposal
      * @param _target address of the proposal
+     * @param _proposalId proposalId Id that identifies the proposal uniquely
      */
-    function proposeVote(address _target) external {
-        proposalID += 1;
-        proposals[proposalID].target = _target;
-        proposals[proposalID].proposalID = proposalID;
-        proposals[proposalID].status = Status.OPEN;
-        proposals[proposalID]
+    function proposeVote(address _target, uint256 _proposalId) external {
+        require(
+            proposals[_proposalId].proposalID == 0,
+            "Proposal already submitted"
+        );
+        proposals[_proposalId].target = _target;
+        proposals[_proposalId].proposalID = _proposalId;
+        proposals[_proposalId].status = Status.OPEN;
+        proposals[_proposalId]
             .description = "Mint 1000 tokens to target address";
 
-        emit SnapshotVotingCreated(_target, proposalID);
+        emit ProposalCreated(_target, _proposalId);
     }
 
     /**
-     * @dev Execute a chosen proposal
-     * @param _proposalID identifier of the proposal
+     * @dev Execute a passed proposal
+     * @param _proposalID proposalId Id that identifies the proposal uniquely
      */
     function executeProposal(uint256 _proposalID) external {
         Proposal memory proposal = proposals[_proposalID];
         require(proposal.proposalID != 0, "Proposal not found");
-        require(proposal.status == Status.OPEN, "Proposal is closed");
+        require(proposal.status == Status.OPEN, "Proposal is not valid");
         bytes32 _queryID = keccak256(
             abi.encode("Snapshot", abi.encode(address(this), _proposalID))
         );
-        (uint256 _yesAmount, uint256 _noAmount) = readVoteResultBefore(
+        (uint256 _yesAmount, uint256 _noAmount) = readProposalResultBefore(
             _queryID,
             block.timestamp - 1 hours
         );
+        proposals[_proposalID].yesVotes = _yesAmount;
+        proposals[_proposalID].noVotes = _noAmount;
         uint256 totalVotes = _yesAmount + _noAmount;
         require(totalVotes >= quorumVotes, "Not enough votes");
         require(_yesAmount > _noAmount, "Not enough yes votes");
         proposals[_proposalID].status = Status.CLOSED;
         token.mint(proposals[_proposalID].target, 1000);
 
-        emit SnapshotVotingExecuted(proposal.target, _proposalID);
+        emit ProposalExecuted(proposal.target, _proposalID);
     }
 
     /**
-     * @dev Get the proposal result
+     * @dev Get the proposal result and allow time for value to be disputed
      * @param _queryId id of desired data feed
      * @param _timestamp to retrieve data from
      * @return result of the proposal
      */
-    function readVoteResultBefore(bytes32 _queryId, uint256 _timestamp)
+    function readProposalResultBefore(bytes32 _queryId, uint256 _timestamp)
         public
         view
         returns (uint256, uint256)
@@ -113,24 +129,15 @@ contract SnapshotVoting is UsingTellor {
     }
 
     /**
-     * @dev return current proposal count
-     * @return uint256 proposal count
+     * @dev Marks a proposal as invalid
+     * @param _proposalID proposalId Id that identifies the proposal uniquely
      */
-    function getCurrentProposalID() external view returns (uint256) {
-        return proposalID;
-    }
-
-    /**
-     * @dev Returns proposal target
-     * @param _proposalID Proposal ID
-     * @return address of proposal target
-     */
-    function getProposalTarget(uint256 _proposalID)
-        external
-        view
-        returns (address)
-    {
-        return proposals[_proposalID].target;
+    function invalidateProposal(uint256 _proposalID) external view {
+        require(msg.sender == arbitrator, "Only the arbitrator can invalidate");
+        Proposal memory proposal = proposals[_proposalID];
+        require(proposal.proposalID != 0, "Proposal not found");
+        require(proposal.status == Status.OPEN, "Proposal is not valid");
+        proposal.status = Status.INVALID;
     }
 
     /**
@@ -139,5 +146,13 @@ contract SnapshotVoting is UsingTellor {
      */
     function getTokenAddress() external view returns (address) {
         return address(token);
+    }
+
+    /**
+     * @dev Returns the required quorum votes
+     * @return amount of votes required to execute proposal
+     */
+    function getQuorum() external view returns (uint256) {
+        return quorumVotes;
     }
 }
