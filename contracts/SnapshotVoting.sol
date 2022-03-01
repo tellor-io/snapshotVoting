@@ -8,7 +8,8 @@ import "./MyToken.sol";
  @author Tellor Inc.
  @title SnapshotVoting
  @dev This is the SnapshotVoting contract which defines the functionality for
- * using Tellor to verify snapshot vote results
+ * using Tellor to verify snapshot vote results.
+ * This sample contract mints 1000 tokens to a target address when the off-chain proposal passes.
 */
 contract SnapshotVoting is UsingTellor {
     // Events
