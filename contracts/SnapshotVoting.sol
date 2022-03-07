@@ -132,13 +132,14 @@ contract SnapshotVoting is UsingTellor {
     /**
      * @dev Marks a proposal as invalid
      * @param _proposalID proposalId Id that identifies the proposal uniquely
+     * @notice This function is only callable by the arbitrator
      */
-    function invalidateProposal(uint256 _proposalID) external view {
+    function invalidateProposal(uint256 _proposalID) external {
         require(msg.sender == arbitrator, "Only the arbitrator can invalidate");
         Proposal memory proposal = proposals[_proposalID];
         require(proposal.proposalID != 0, "Proposal not found");
         require(proposal.status == Status.OPEN, "Proposal is not valid");
-        proposal.status = Status.INVALID;
+        proposals[_proposalID].status = Status.INVALID;
     }
 
     /**
@@ -155,5 +156,23 @@ contract SnapshotVoting is UsingTellor {
      */
     function getQuorum() external view returns (uint256) {
         return quorumVotes;
+    }
+
+    /**
+     * @dev Returns the proposal Status
+     * @param _proposalId proposalId Id that identifies the proposal uniquely
+     * @return status of the proposal
+     */
+    function getStatus(uint256 _proposalId) external view returns (Status) {
+        return proposals[_proposalId].status;
+    }
+
+    /**
+     * @dev Returns the proposal votes
+     * @param _proposalId proposalId Id that identifies the proposal uniquely
+     * @return yes and no votes count
+     */
+    function getVotes(uint256 _proposalId) external view returns (uint256, uint256) {
+        return (proposals[_proposalId].yesVotes, proposals[_proposalId].noVotes);
     }
 }

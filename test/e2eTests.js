@@ -27,11 +27,8 @@ describe("End-to-End Tests", function () {
     myToken = MyToken.attach(snapshotVoting.getTokenAddress());
 
     addresses = await ethers.getSigners();
-  });
-
-  it("Create and execute three different proposals", async function () {
     for (let i = 1; i <= 3; i++) {
-      await snapshotVoting.proposeVote(addresses[i].address,i);
+      await snapshotVoting.proposeVote(addresses[i].address, i);
 
       queryDataArgs = abiCoder.encode(
         ["uint256", "uint256"],
@@ -52,9 +49,12 @@ describe("End-to-End Tests", function () {
         0,
         queryData
       );
-
-      await h.advanceTime(10000);
     }
+
+    await h.advanceTime(10000);
+  });
+
+  it("Create and execute three different proposals", async function () {
     await h.expectThrow(snapshotVoting.executeProposal(1));
     await snapshotVoting.executeProposal(2);
     await snapshotVoting.executeProposal(3);
@@ -62,5 +62,44 @@ describe("End-to-End Tests", function () {
     expect(await myToken.balanceOf(addresses[1].address)).to.equal(0);
     expect(await myToken.balanceOf(addresses[2].address)).to.equal(1000);
     expect(await myToken.balanceOf(addresses[3].address)).to.equal(1000);
+  });
+
+  it("check proposal status", async function () {
+    expect(await snapshotVoting.getStatus(1)).to.equal(0);
+
+    await snapshotVoting.executeProposal(2);
+
+    expect(await snapshotVoting.getStatus(2)).to.equal(1);
+
+    await snapshotVoting.connect(addresses[0]).invalidateProposal(3);
+    expect(await snapshotVoting.getStatus(3)).to.equal(2);
+  });
+
+  it("submit new values", async function () {
+    await h.expectThrow(snapshotVoting.executeProposal(1));
+
+    queryDataArgs = abiCoder.encode(
+      ["uint256", "uint256"],
+      [snapshotVoting.address, 1]
+    );
+
+    queryData = abiCoder.encode(
+      ["string", "bytes"],
+      ["Snapshot", queryDataArgs]
+    );
+
+    queryID = ethers.utils.keccak256(queryData);
+
+    await tellorOracle.submitValue(
+      queryID,
+      abiCoder.encode(["uint256", "uint256"], [10000, 2400]),
+      1,
+      queryData
+    );
+
+    await h.advanceTime(10000);
+
+    await snapshotVoting.executeProposal(1);
+    expect(await snapshotVoting.getStatus(1)).to.equal(1);
   });
 });
