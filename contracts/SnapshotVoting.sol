@@ -23,12 +23,13 @@ contract SnapshotVoting is UsingTellor {
     );
 
     // Storage
+    address private arbitrator;
+
     mapping(uint256 => Proposal) public proposals;
 
     uint256 private quorumVotes;
 
     MyToken private token;
-    address private arbitrator;
 
     // Enums
     enum Status {
@@ -39,11 +40,11 @@ contract SnapshotVoting is UsingTellor {
 
     // Structs
     struct Proposal {
+        string description;
+        uint256 noVotes;
         uint256 proposalID;
         uint256 yesVotes;
-        uint256 noVotes;
         address target;
-        string description;
         Status status;
     }
 
@@ -62,22 +63,16 @@ contract SnapshotVoting is UsingTellor {
     }
 
     /**
-     * @dev Create a proposal
-     * @param _target address of the proposal
-     * @param _proposalId proposalId Id that identifies the proposal uniquely
+     * @dev Marks a proposal as invalid
+     * @param _proposalID proposalId Id that identifies the proposal uniquely
+     * @notice This function is only callable by the arbitrator
      */
-    function proposeVote(address _target, uint256 _proposalId) external {
-        require(
-            proposals[_proposalId].proposalID == 0,
-            "Proposal already submitted"
-        );
-        proposals[_proposalId].target = _target;
-        proposals[_proposalId].proposalID = _proposalId;
-        proposals[_proposalId].status = Status.OPEN;
-        proposals[_proposalId]
-            .description = "Mint 1000 tokens to target address";
-
-        emit ProposalCreated(_target, _proposalId);
+    function invalidateProposal(uint256 _proposalID) external {
+        require(msg.sender == arbitrator, "Only the arbitrator can invalidate");
+        Proposal memory proposal = proposals[_proposalID];
+        require(proposal.proposalID != 0, "Proposal not found");
+        require(proposal.status == Status.OPEN, "Proposal is not valid");
+        proposals[_proposalID].status = Status.INVALID;
     }
 
     /**
@@ -107,6 +102,25 @@ contract SnapshotVoting is UsingTellor {
     }
 
     /**
+     * @dev Create a proposal
+     * @param _target address of the proposal
+     * @param _proposalId proposalId Id that identifies the proposal uniquely
+     */
+    function proposeVote(address _target, uint256 _proposalId) external {
+        require(
+            proposals[_proposalId].proposalID == 0,
+            "Proposal already submitted"
+        );
+        proposals[_proposalId].target = _target;
+        proposals[_proposalId].proposalID = _proposalId;
+        proposals[_proposalId].status = Status.OPEN;
+        proposals[_proposalId]
+            .description = "Mint 1000 tokens to target address";
+
+        emit ProposalCreated(_target, _proposalId);
+    }
+
+    /**
      * @dev Get the proposal result and allow time for value to be disputed
      * @param _queryId id of desired data feed
      * @param _timestamp to retrieve data from
@@ -127,19 +141,6 @@ contract SnapshotVoting is UsingTellor {
         require(_ifRetrieve, "must get data to execute vote");
         (uint256 _yes, uint256 _no) = abi.decode(_value, (uint256, uint256));
         return (_yes, _no);
-    }
-
-    /**
-     * @dev Marks a proposal as invalid
-     * @param _proposalID proposalId Id that identifies the proposal uniquely
-     * @notice This function is only callable by the arbitrator
-     */
-    function invalidateProposal(uint256 _proposalID) external {
-        require(msg.sender == arbitrator, "Only the arbitrator can invalidate");
-        Proposal memory proposal = proposals[_proposalID];
-        require(proposal.proposalID != 0, "Proposal not found");
-        require(proposal.status == Status.OPEN, "Proposal is not valid");
-        proposals[_proposalID].status = Status.INVALID;
     }
 
     /**
@@ -172,7 +173,14 @@ contract SnapshotVoting is UsingTellor {
      * @param _proposalId proposalId Id that identifies the proposal uniquely
      * @return yes and no votes count
      */
-    function getVotes(uint256 _proposalId) external view returns (uint256, uint256) {
-        return (proposals[_proposalId].yesVotes, proposals[_proposalId].noVotes);
+    function getVotes(uint256 _proposalId)
+        external
+        view
+        returns (uint256, uint256)
+    {
+        return (
+            proposals[_proposalId].yesVotes,
+            proposals[_proposalId].noVotes
+        );
     }
 }
