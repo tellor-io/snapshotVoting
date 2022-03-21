@@ -28,11 +28,11 @@ describe("End-to-End Tests", function () {
 
     addresses = await ethers.getSigners();
     for (let i = 1; i <= 3; i++) {
-      await snapshotVoting.proposeVote(addresses[i].address, i);
+      await snapshotVoting.proposeVote(addresses[i].address, i.toString());
 
       queryDataArgs = abiCoder.encode(
-        ["uint256", "uint256"],
-        [snapshotVoting.address, i]
+        ["string"],
+        [i.toString()]
       );
 
       queryData = abiCoder.encode(
@@ -55,9 +55,9 @@ describe("End-to-End Tests", function () {
   });
 
   it("Create and execute three different proposals", async function () {
-    await h.expectThrow(snapshotVoting.executeProposal(1));
-    await snapshotVoting.executeProposal(2);
-    await snapshotVoting.executeProposal(3);
+    await h.expectThrow(snapshotVoting.executeProposal("1"));
+    await snapshotVoting.executeProposal("2");
+    await snapshotVoting.executeProposal("3");
 
     expect(await myToken.balanceOf(addresses[1].address)).to.equal(0);
     expect(await myToken.balanceOf(addresses[2].address)).to.equal(1000);
@@ -65,22 +65,22 @@ describe("End-to-End Tests", function () {
   });
 
   it("check proposal status", async function () {
-    expect(await snapshotVoting.getStatus(1)).to.equal(0);
+    expect(await snapshotVoting.getStatus("1")).to.equal(0);
 
-    await snapshotVoting.executeProposal(2);
+    await snapshotVoting.executeProposal("2");
 
-    expect(await snapshotVoting.getStatus(2)).to.equal(1);
+    expect(await snapshotVoting.getStatus("2")).to.equal(1);
 
-    await snapshotVoting.connect(addresses[0]).invalidateProposal(3);
-    expect(await snapshotVoting.getStatus(3)).to.equal(2);
+    await snapshotVoting.connect(addresses[0]).invalidateProposal("3");
+    expect(await snapshotVoting.getStatus("3")).to.equal(2);
   });
 
   it("submit new values", async function () {
-    await h.expectThrow(snapshotVoting.executeProposal(1));
+    await h.expectThrow(snapshotVoting.executeProposal("1"));
 
     queryDataArgs = abiCoder.encode(
-      ["uint256", "uint256"],
-      [snapshotVoting.address, 1]
+      ["string"],
+      ["1"]
     );
 
     queryData = abiCoder.encode(
@@ -99,7 +99,7 @@ describe("End-to-End Tests", function () {
 
     await h.advanceTime(10000);
 
-    await snapshotVoting.executeProposal(1);
-    expect(await snapshotVoting.getStatus(1)).to.equal(1);
+    await snapshotVoting.executeProposal("1");
+    expect(await snapshotVoting.getStatus("1")).to.equal(1);
   });
 });

@@ -49,7 +49,7 @@ async function deploySnapshotVoting(_network, _pk, _nodeURL) {
   // Wait for few confirmed transactions.
   // Otherwise the etherscan api doesn't find the deployed contract.
   console.log("waiting for SnapshotVoting tx confirmation...");
-  await snapshotVoting.deployTransaction.wait(3);
+  await snapshotVoting.deployTransaction.wait(5);
 
   console.log("submitting SnapshotVoting contract for verification...");
 

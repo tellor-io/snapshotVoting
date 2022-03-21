@@ -37,8 +37,8 @@ describe("Tellor verify snapshot vote results", function () {
 
   it("Test readProposalResultBefore()", async function () {
     queryDataArgs = abiCoder.encode(
-      ["uint256", "uint256"],
-      [snapshotVoting.address, 1]
+      ["string"],
+      ["1"]
     );
 
     queryData = abiCoder.encode(
@@ -69,8 +69,8 @@ describe("Tellor verify snapshot vote results", function () {
     ).to.equal(10023, 1058);
 
     queryDataArgs = abiCoder.encode(
-      ["uint256", "uint256"],
-      [snapshotVoting.address, 5]
+      ["string"],
+      ["5"]
     );
 
     queryData = abiCoder.encode(
@@ -91,17 +91,17 @@ describe("Tellor verify snapshot vote results", function () {
   });
 
   it("Test proposeVote()", async function () {
-    await snapshotVoting.proposeVote(addr1.address, 1);
-    await h.expectThrow(snapshotVoting.proposeVote(addr2.address, 1));
+    await snapshotVoting.proposeVote(addr1.address, "1");
+    await h.expectThrow(snapshotVoting.proposeVote(addr2.address, "1"));
   });
 
   it("Test executeProposal()", async function () {
     //throw when proposalID not found
-    await snapshotVoting.proposeVote(addr1.address, 1);
+    await snapshotVoting.proposeVote(addr1.address, "1");
 
     queryDataArgs = abiCoder.encode(
-      ["uint256", "uint256"],
-      [snapshotVoting.address, 1]
+      ["string"],
+      ["1"]
     );
 
     queryData = abiCoder.encode(
@@ -113,14 +113,14 @@ describe("Tellor verify snapshot vote results", function () {
     // submit value takes 4 args : queryId, value, nonce and queryData
     await tellorOracle.submitValue(queryID, valuesEncoded, 0, queryData);
     await h.advanceTime(10000);
-    await h.expectThrow(snapshotVoting.executeProposal(0));
+    await h.expectThrow(snapshotVoting.executeProposal("0"));
 
     //throw when not enough votes (min. 10 000)needed
-    await snapshotVoting.proposeVote(addr1.address, 2);
+    await snapshotVoting.proposeVote(addr1.address, "2");
 
     queryDataArgs = abiCoder.encode(
-      ["uint256", "uint256"],
-      [snapshotVoting.address, 2]
+      ["string"],
+      ["2"]
     );
 
     queryData = abiCoder.encode(
@@ -138,14 +138,14 @@ describe("Tellor verify snapshot vote results", function () {
     );
 
     await h.advanceTime(10000);
-    await h.expectThrow(snapshotVoting.executeProposal(2));
+    await h.expectThrow(snapshotVoting.executeProposal("2"));
 
     //throw when not enough yes votes(51% needed)
-    await snapshotVoting.proposeVote(addr1.address, 3);
+    await snapshotVoting.proposeVote(addr1.address, "3");
     
     queryDataArgs = abiCoder.encode(
-      ["uint256", "uint256"],
-      [snapshotVoting.address, 3]
+      ["string"],
+      ["3"]
     );
 
     queryData = abiCoder.encode(
@@ -163,14 +163,14 @@ describe("Tellor verify snapshot vote results", function () {
     );
 
     await h.advanceTime(10000);
-    await h.expectThrow(snapshotVoting.executeProposal(3));
+    await h.expectThrow(snapshotVoting.executeProposal("3"));
 
     //succeed
-    await snapshotVoting.proposeVote(addr1.address, 4);
+    await snapshotVoting.proposeVote(addr1.address, "4");
 
     queryDataArgs = abiCoder.encode(
-      ["uint256", "uint256"],
-      [snapshotVoting.address, 4]
+      ["string"],
+      ["4"]
     );
     
     queryData = abiCoder.encode(
@@ -182,19 +182,19 @@ describe("Tellor verify snapshot vote results", function () {
     await tellorOracle.submitValue(queryID, valuesEncoded, 0, queryData);
 
     await h.advanceTime(10000);
-    await snapshotVoting.executeProposal(4);
+    await snapshotVoting.executeProposal("4");
     expect(await myToken.balanceOf(addr1.address)).to.equal(1000);
 
     //throw when executing a CLOSED proposal
-    await h.expectThrow(snapshotVoting.executeProposal(4));
+    await h.expectThrow(snapshotVoting.executeProposal("4"));
   });
 
   it("Test invalidateProposal()", async function () {
-    await snapshotVoting.proposeVote(addr1.address,1);
-    await h.expectThrow(snapshotVoting.connect(addr1).invalidateProposal(1));
-    await snapshotVoting.invalidateProposal(1);
+    await snapshotVoting.proposeVote(addr1.address,"1");
+    await h.expectThrow(snapshotVoting.connect(addr1).invalidateProposal("1"));
+    await snapshotVoting.invalidateProposal("1");
 
-   await h.expectThrow(snapshotVoting.executeProposal(1));
+   await h.expectThrow(snapshotVoting.executeProposal("1"));
   })
   it("Test mint()", async function () {
     //throw when minting as non governance address

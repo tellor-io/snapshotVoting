@@ -15,17 +15,17 @@ contract SnapshotVoting is UsingTellor {
     // Events
     event ProposalCreated(
         address indexed _snapshotVotingAddress,
-        uint256 proposalID
+        string proposalID
     );
     event ProposalExecuted(
         address indexed _snapshotVotingAddress,
-        uint256 proposalID
+        string proposalID
     );
 
     // Storage
     address private arbitrator;
 
-    mapping(uint256 => Proposal) public proposals;
+    mapping(string => Proposal) public proposals;
 
     uint256 private quorumVotes;
 
@@ -42,7 +42,7 @@ contract SnapshotVoting is UsingTellor {
     struct Proposal {
         string description;
         uint256 noVotes;
-        uint256 proposalID;
+        string proposalID;
         uint256 yesVotes;
         address target;
         Status status;
@@ -67,10 +67,10 @@ contract SnapshotVoting is UsingTellor {
      * @param _proposalID proposalId Id that identifies the proposal uniquely
      * @notice This function is only callable by the arbitrator
      */
-    function invalidateProposal(uint256 _proposalID) external {
+    function invalidateProposal(string memory _proposalID) external {
         require(msg.sender == arbitrator, "Only the arbitrator can invalidate");
         Proposal memory proposal = proposals[_proposalID];
-        require(proposal.proposalID != 0, "Proposal not found");
+        require(bytes(proposal.proposalID).length != 0, "Proposal not found");
         require(proposal.status == Status.OPEN, "Proposal is not valid");
         proposals[_proposalID].status = Status.INVALID;
     }
@@ -79,12 +79,12 @@ contract SnapshotVoting is UsingTellor {
      * @dev Execute a passed proposal
      * @param _proposalID proposalId Id that identifies the proposal uniquely
      */
-    function executeProposal(uint256 _proposalID) external {
+    function executeProposal(string memory _proposalID) external {
         Proposal memory proposal = proposals[_proposalID];
-        require(proposal.proposalID != 0, "Proposal not found");
+        require(bytes(proposal.proposalID).length != 0, "Proposal not found");
         require(proposal.status == Status.OPEN, "Proposal is not valid");
         bytes32 _queryID = keccak256(
-            abi.encode("Snapshot", abi.encode(address(this), _proposalID))
+            abi.encode("Snapshot", abi.encode(_proposalID))
         );
         (uint256 _yesAmount, uint256 _noAmount) = readProposalResultBefore(
             _queryID,
@@ -106,9 +106,9 @@ contract SnapshotVoting is UsingTellor {
      * @param _target address of the proposal
      * @param _proposalId proposalId Id that identifies the proposal uniquely
      */
-    function proposeVote(address _target, uint256 _proposalId) external {
+    function proposeVote(address _target, string memory _proposalId) external {
         require(
-            proposals[_proposalId].proposalID == 0,
+            bytes(proposals[_proposalId].proposalID).length == 0,
             "Proposal already submitted"
         );
         proposals[_proposalId].target = _target;
@@ -164,7 +164,7 @@ contract SnapshotVoting is UsingTellor {
      * @param _proposalId proposalId Id that identifies the proposal uniquely
      * @return status of the proposal
      */
-    function getStatus(uint256 _proposalId) external view returns (Status) {
+    function getStatus(string memory _proposalId) external view returns (Status) {
         return proposals[_proposalId].status;
     }
 
@@ -173,7 +173,7 @@ contract SnapshotVoting is UsingTellor {
      * @param _proposalId proposalId Id that identifies the proposal uniquely
      * @return yes and no votes count
      */
-    function getVotes(uint256 _proposalId)
+    function getVotes(string memory _proposalId)
         external
         view
         returns (uint256, uint256)
