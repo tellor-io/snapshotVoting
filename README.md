@@ -28,6 +28,11 @@ Test Locally
 npx hardhat test
 ```
 
+Deploy
+```bash
+npx hardhat run --network <your-network> scripts/deploy.js
+```
+
 ## Maintainers <a name="maintainers"> </a>
 This repository is maintained by the [Tellor team](https://github.com/orgs/tellor-io/people)
 
