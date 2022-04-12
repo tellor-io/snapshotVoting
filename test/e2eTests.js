@@ -45,7 +45,7 @@ describe("End-to-End Tests", function () {
       //fail, succeed, succeed
       await tellorOracle.submitValue(
         queryID,
-        abiCoder.encode(["uint256", "uint256"], [5000 * i, 1200 * i]),
+        abiCoder.encode(["uint256[]"], [[5000 * i, 1200 * i]]),
         0,
         queryData
       );
@@ -92,7 +92,7 @@ describe("End-to-End Tests", function () {
 
     await tellorOracle.submitValue(
       queryID,
-      abiCoder.encode(["uint256", "uint256"], [10000, 2400]),
+      abiCoder.encode(["uint256[]"], [[10000, 2400]]),
       1,
       queryData
     );

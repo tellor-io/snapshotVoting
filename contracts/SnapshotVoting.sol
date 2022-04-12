@@ -97,7 +97,6 @@ contract SnapshotVoting is UsingTellor {
         require(_yesAmount > _noAmount, "Not enough yes votes");
         proposals[_proposalID].status = Status.CLOSED;
         token.mint(proposals[_proposalID].target, 1000);
-
         emit ProposalExecuted(proposal.target, _proposalID);
     }
 
@@ -139,8 +138,9 @@ contract SnapshotVoting is UsingTellor {
             _timestamp
         );
         require(_ifRetrieve, "must get data to execute vote");
-        (uint256 _yes, uint256 _no) = abi.decode(_value, (uint256, uint256));
-        return (_yes, _no);
+        uint256[] memory values = abi.decode(_value, (uint256[]));
+
+        return (values[0], values[1]);
     }
 
     /**
@@ -164,7 +164,11 @@ contract SnapshotVoting is UsingTellor {
      * @param _proposalId proposalId Id that identifies the proposal uniquely
      * @return status of the proposal
      */
-    function getStatus(string memory _proposalId) external view returns (Status) {
+    function getStatus(string memory _proposalId)
+        external
+        view
+        returns (Status)
+    {
         return proposals[_proposalId].status;
     }
 

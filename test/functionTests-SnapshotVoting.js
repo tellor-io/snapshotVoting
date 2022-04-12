@@ -32,14 +32,11 @@ describe("Tellor verify snapshot vote results", function () {
     myToken = MyToken.attach(snapshotVoting.getTokenAddress());
 
     [owner, addr1, addr2] = await ethers.getSigners();
-    valuesEncoded = abiCoder.encode(["uint256", "uint256"], [10023, 1058]);
+    valuesEncoded = abiCoder.encode(["uint256[]"], [[10023, 1058]]);
   });
 
   it("Test readProposalResultBefore()", async function () {
-    queryDataArgs = abiCoder.encode(
-      ["string"],
-      ["1"]
-    );
+    queryDataArgs = abiCoder.encode(["string"], ["1"]);
 
     queryData = abiCoder.encode(
       ["string", "bytes"],
@@ -60,18 +57,11 @@ describe("Tellor verify snapshot vote results", function () {
     ).to.equal(true);
 
     expect(
-      parseInt(
-        await snapshotVoting.readProposalResultBefore(
-          queryID,
-          blocky1.timestamp
-        )
-      )
-    ).to.equal(10023, 1058);
+      (await snapshotVoting.readProposalResultBefore(queryID, blocky1.timestamp))
+      .map(x=>x.toNumber())
+    ).to.deep.equal([10023, 1058]);
 
-    queryDataArgs = abiCoder.encode(
-      ["string"],
-      ["5"]
-    );
+    queryDataArgs = abiCoder.encode(["string"], ["5"]);
 
     queryData = abiCoder.encode(
       ["string", "bytes"],
@@ -99,10 +89,7 @@ describe("Tellor verify snapshot vote results", function () {
     //throw when proposalID not found
     await snapshotVoting.proposeVote(addr1.address, "1");
 
-    queryDataArgs = abiCoder.encode(
-      ["string"],
-      ["1"]
-    );
+    queryDataArgs = abiCoder.encode(["string"], ["1"]);
 
     queryData = abiCoder.encode(
       ["string", "bytes"],
@@ -118,10 +105,7 @@ describe("Tellor verify snapshot vote results", function () {
     //throw when not enough votes (min. 10 000)needed
     await snapshotVoting.proposeVote(addr1.address, "2");
 
-    queryDataArgs = abiCoder.encode(
-      ["string"],
-      ["2"]
-    );
+    queryDataArgs = abiCoder.encode(["string"], ["2"]);
 
     queryData = abiCoder.encode(
       ["string", "bytes"],
@@ -142,11 +126,8 @@ describe("Tellor verify snapshot vote results", function () {
 
     //throw when not enough yes votes(51% needed)
     await snapshotVoting.proposeVote(addr1.address, "3");
-    
-    queryDataArgs = abiCoder.encode(
-      ["string"],
-      ["3"]
-    );
+
+    queryDataArgs = abiCoder.encode(["string"], ["3"]);
 
     queryData = abiCoder.encode(
       ["string", "bytes"],
@@ -168,11 +149,8 @@ describe("Tellor verify snapshot vote results", function () {
     //succeed
     await snapshotVoting.proposeVote(addr1.address, "4");
 
-    queryDataArgs = abiCoder.encode(
-      ["string"],
-      ["4"]
-    );
-    
+    queryDataArgs = abiCoder.encode(["string"], ["4"]);
+
     queryData = abiCoder.encode(
       ["string", "bytes"],
       ["Snapshot", queryDataArgs]
@@ -190,12 +168,12 @@ describe("Tellor verify snapshot vote results", function () {
   });
 
   it("Test invalidateProposal()", async function () {
-    await snapshotVoting.proposeVote(addr1.address,"1");
+    await snapshotVoting.proposeVote(addr1.address, "1");
     await h.expectThrow(snapshotVoting.connect(addr1).invalidateProposal("1"));
     await snapshotVoting.invalidateProposal("1");
 
-   await h.expectThrow(snapshotVoting.executeProposal("1"));
-  })
+    await h.expectThrow(snapshotVoting.executeProposal("1"));
+  });
   it("Test mint()", async function () {
     //throw when minting as non governance address
     await h.expectThrow(myToken.mint(owner.address, 100));
