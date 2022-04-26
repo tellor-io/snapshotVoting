@@ -116,7 +116,7 @@ describe("Tellor verify snapshot vote results", function () {
 
     await tellorOracle.submitValue(
       queryID,
-      abiCoder.encode(["uint256", "uint256"], [4000, 3000]),
+      abiCoder.encode(["uint256[]"], [[4000, 3000]]),
       0,
       queryData
     );
@@ -138,7 +138,7 @@ describe("Tellor verify snapshot vote results", function () {
 
     await tellorOracle.submitValue(
       queryID,
-      abiCoder.encode(["uint256", "uint256"], [5000, 6000]),
+      abiCoder.encode(["uint256[]"], [[5000, 6000]]),
       0,
       queryData
     );
