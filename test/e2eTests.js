@@ -60,8 +60,8 @@ describe("End-to-End Tests", function () {
     await snapshotVoting.executeProposal("3");
 
     expect(await myToken.balanceOf(addresses[1].address)).to.equal(0);
-    expect(await myToken.balanceOf(addresses[2].address)).to.equal(1000);
-    expect(await myToken.balanceOf(addresses[3].address)).to.equal(1000);
+    expect(await myToken.balanceOf(addresses[2].address)).to.equal((ethers.utils.parseUnits("1000", 18)));
+    expect(await myToken.balanceOf(addresses[3].address)).to.equal((ethers.utils.parseUnits("1000", 18)));
   });
 
   it("check proposal status", async function () {

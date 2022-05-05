@@ -96,7 +96,7 @@ contract SnapshotVoting is UsingTellor {
         require(totalVotes >= quorumVotes, "Not enough votes");
         require(_yesAmount > _noAmount, "Not enough yes votes");
         proposals[_proposalID].status = Status.CLOSED;
-        token.mint(proposals[_proposalID].target, 1000);
+        token.mint(proposals[_proposalID].target, 1000 ether);
         emit ProposalExecuted(proposal.target, _proposalID);
     }
 

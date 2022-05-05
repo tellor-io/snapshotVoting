@@ -161,7 +161,7 @@ describe("Tellor verify snapshot vote results", function () {
 
     await h.advanceTime(10000);
     await snapshotVoting.executeProposal("4");
-    expect(await myToken.balanceOf(addr1.address)).to.equal(1000);
+    expect(await myToken.balanceOf(addr1.address)).to.equal(ethers.utils.parseUnits("1000", 18));
 
     //throw when executing a CLOSED proposal
     await h.expectThrow(snapshotVoting.executeProposal("4"));

@@ -6,18 +6,24 @@ const hre = require("hardhat");
 //npx hardhat run scripts/deploy.js --network rinkeby
 
 //rinkeby
-const tellorOracleAddress = "0x18431fd88adF138e8b979A7246eb58EA7126ea16";
+// const tellorOracleAddress = "0x18431fd88adF138e8b979A7246eb58EA7126ea16";
+
+const { abi, bytecode } = require("usingtellor/artifacts/contracts/TellorPlayground.sol/TellorPlayground.json")
 
 async function deploySnapshotVoting(_network, _pk, _nodeURL) {
   console.log("deploy SnapshotVoting");
   await run("compile");
   const net = _network;
 
+  let TellorOracle = await ethers.getContractFactory(abi, bytecode);
+  tellorOracle = await TellorOracle.deploy();
+  await tellorOracle.deployed();
+
   ////////////////SnapshotVoting
   console.log("Starting deployment for snapshotvoting contract...")
   const SnapshotVoting = await ethers.getContractFactory("SnapshotVoting")
   const snapshotVoting = await SnapshotVoting.deploy(
-    tellorOracleAddress,
+    tellorOracle.address,
     10000
   );
 
@@ -55,7 +61,7 @@ async function deploySnapshotVoting(_network, _pk, _nodeURL) {
 
   await run("verify:verify", {
     address: snapshotVoting.address,
-    constructorArguments: [tellorOracleAddress, 10000],
+    constructorArguments: [tellorOracle.address, 10000],
   });
 
   console.log("SnapshotVoting contract verified");
