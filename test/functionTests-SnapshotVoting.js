@@ -25,14 +25,14 @@ describe("Tellor verify snapshot vote results", function () {
     await tellorOracle.deployed();
 
     const SnapshotVoting = await ethers.getContractFactory("SnapshotVoting");
-    snapshotVoting = await SnapshotVoting.deploy(tellorOracle.address, 10000);
+    snapshotVoting = await SnapshotVoting.deploy(tellorOracle.address);
     await snapshotVoting.deployed();
 
     const MyToken = await ethers.getContractFactory("MyToken");
     myToken = MyToken.attach(snapshotVoting.getTokenAddress());
 
     [owner, addr1, addr2] = await ethers.getSigners();
-    valuesEncoded = abiCoder.encode(["uint256[]"], [[10023, 1058]]);
+    valuesEncoded = abiCoder.encode(["bool"], [true]);
   });
 
   it("Test readProposalResultBefore()", async function () {
@@ -51,15 +51,10 @@ describe("Tellor verify snapshot vote results", function () {
     await h.advanceTime(10000);
     blocky1 = await h.getBlock();
 
-    //return true if value is found
     expect(
-      (await snapshotVoting.getDataBefore(queryID, blocky1.timestamp))[0]
+      (await snapshotVoting
+        .readProposalResultBefore(queryID, blocky1.timestamp))
     ).to.equal(true);
-
-    expect(
-      (await snapshotVoting.readProposalResultBefore(queryID, blocky1.timestamp))
-      .map(x=>x.toNumber())
-    ).to.deep.equal([10023, 1058]);
 
     queryDataArgs = abiCoder.encode(["string"], ["5"]);
 
@@ -116,35 +111,13 @@ describe("Tellor verify snapshot vote results", function () {
 
     await tellorOracle.submitValue(
       queryID,
-      abiCoder.encode(["uint256[]"], [[4000, 3000]]),
+      abiCoder.encode(["bool"], [false]),
       0,
       queryData
     );
 
     await h.advanceTime(10000);
     await h.expectThrow(snapshotVoting.executeProposal("2"));
-
-    //throw when not enough yes votes(51% needed)
-    await snapshotVoting.proposeVote(addr1.address, "3");
-
-    queryDataArgs = abiCoder.encode(["string"], ["3"]);
-
-    queryData = abiCoder.encode(
-      ["string", "bytes"],
-      ["Snapshot", queryDataArgs]
-    );
-
-    queryID = ethers.utils.keccak256(queryData);
-
-    await tellorOracle.submitValue(
-      queryID,
-      abiCoder.encode(["uint256[]"], [[5000, 6000]]),
-      0,
-      queryData
-    );
-
-    await h.advanceTime(10000);
-    await h.expectThrow(snapshotVoting.executeProposal("3"));
 
     //succeed
     await snapshotVoting.proposeVote(addr1.address, "4");
@@ -161,7 +134,9 @@ describe("Tellor verify snapshot vote results", function () {
 
     await h.advanceTime(10000);
     await snapshotVoting.executeProposal("4");
-    expect(await myToken.balanceOf(addr1.address)).to.equal(ethers.utils.parseUnits("1000", 18));
+    expect(await myToken.balanceOf(addr1.address)).to.equal(
+      ethers.utils.parseUnits("1000", 18)
+    );
 
     //throw when executing a CLOSED proposal
     await h.expectThrow(snapshotVoting.executeProposal("4"));

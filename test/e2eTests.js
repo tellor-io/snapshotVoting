@@ -20,7 +20,7 @@ describe("End-to-End Tests", function () {
     await tellorOracle.deployed();
 
     const SnapshotVoting = await ethers.getContractFactory("SnapshotVoting");
-    snapshotVoting = await SnapshotVoting.deploy(tellorOracle.address, 10000);
+    snapshotVoting = await SnapshotVoting.deploy(tellorOracle.address);
     await snapshotVoting.deployed();
 
     const MyToken = await ethers.getContractFactory("MyToken");
@@ -30,10 +30,7 @@ describe("End-to-End Tests", function () {
     for (let i = 1; i <= 3; i++) {
       await snapshotVoting.proposeVote(addresses[i].address, i.toString());
 
-      queryDataArgs = abiCoder.encode(
-        ["string"],
-        [i.toString()]
-      );
+      queryDataArgs = abiCoder.encode(["string"], [i.toString()]);
 
       queryData = abiCoder.encode(
         ["string", "bytes"],
@@ -45,12 +42,11 @@ describe("End-to-End Tests", function () {
       //fail, succeed, succeed
       await tellorOracle.submitValue(
         queryID,
-        abiCoder.encode(["uint256[]"], [[5000 * i, 1200 * i]]),
+        abiCoder.encode(["bool"], [i == 1? false : true]),
         0,
         queryData
       );
     }
-
     await h.advanceTime(10000);
   });
 
@@ -60,8 +56,12 @@ describe("End-to-End Tests", function () {
     await snapshotVoting.executeProposal("3");
 
     expect(await myToken.balanceOf(addresses[1].address)).to.equal(0);
-    expect(await myToken.balanceOf(addresses[2].address)).to.equal((ethers.utils.parseUnits("1000", 18)));
-    expect(await myToken.balanceOf(addresses[3].address)).to.equal((ethers.utils.parseUnits("1000", 18)));
+    expect(await myToken.balanceOf(addresses[2].address)).to.equal(
+      ethers.utils.parseUnits("1000", 18)
+    );
+    expect(await myToken.balanceOf(addresses[3].address)).to.equal(
+      ethers.utils.parseUnits("1000", 18)
+    );
   });
 
   it("check proposal status", async function () {
@@ -78,10 +78,7 @@ describe("End-to-End Tests", function () {
   it("submit new values", async function () {
     await h.expectThrow(snapshotVoting.executeProposal("1"));
 
-    queryDataArgs = abiCoder.encode(
-      ["string"],
-      ["1"]
-    );
+    queryDataArgs = abiCoder.encode(["string"], ["1"]);
 
     queryData = abiCoder.encode(
       ["string", "bytes"],
@@ -92,7 +89,7 @@ describe("End-to-End Tests", function () {
 
     await tellorOracle.submitValue(
       queryID,
-      abiCoder.encode(["uint256[]"], [[10000, 2400]]),
+      abiCoder.encode(["bool"], [true]),
       1,
       queryData
     );

@@ -27,8 +27,6 @@ contract SnapshotVoting is UsingTellor {
 
     mapping(string => Proposal) public proposals;
 
-    uint256 private quorumVotes;
-
     MyToken private token;
 
     // Enums
@@ -41,9 +39,8 @@ contract SnapshotVoting is UsingTellor {
     // Structs
     struct Proposal {
         string description;
-        uint256 noVotes;
         string proposalID;
-        uint256 yesVotes;
+        bool didPass;
         address target;
         Status status;
     }
@@ -52,27 +49,10 @@ contract SnapshotVoting is UsingTellor {
     /**
      * @dev Initializes the contract with the parameters, initializes the token
      * @param _tellorAddress address of Tellor contract
-     * @param _quorumVotes total votes required to execute the proposal
      */
-    constructor(address payable _tellorAddress, uint256 _quorumVotes)
-        UsingTellor(_tellorAddress)
-    {
+    constructor(address payable _tellorAddress) UsingTellor(_tellorAddress) {
         arbitrator = msg.sender;
-        quorumVotes = _quorumVotes;
         token = new MyToken(address(this));
-    }
-
-    /**
-     * @dev Marks a proposal as invalid
-     * @param _proposalID proposalId Id that identifies the proposal uniquely
-     * @notice This function is only callable by the arbitrator
-     */
-    function invalidateProposal(string memory _proposalID) external {
-        require(msg.sender == arbitrator, "Only the arbitrator can invalidate");
-        Proposal memory proposal = proposals[_proposalID];
-        require(bytes(proposal.proposalID).length != 0, "Proposal not found");
-        require(proposal.status == Status.OPEN, "Proposal is not valid");
-        proposals[_proposalID].status = Status.INVALID;
     }
 
     /**
@@ -86,61 +66,27 @@ contract SnapshotVoting is UsingTellor {
         bytes32 _queryID = keccak256(
             abi.encode("Snapshot", abi.encode(_proposalID))
         );
-        (uint256 _yesAmount, uint256 _noAmount) = readProposalResultBefore(
-            _queryID,
-            block.timestamp - 1 hours
-        );
-        proposals[_proposalID].yesVotes = _yesAmount;
-        proposals[_proposalID].noVotes = _noAmount;
-        uint256 totalVotes = _yesAmount + _noAmount;
-        require(totalVotes >= quorumVotes, "Not enough votes");
-        require(_yesAmount > _noAmount, "Not enough yes votes");
+        bool _didPass = readProposalResultBefore(_queryID, block.timestamp);
+
+        require(_didPass, "Transaction was not approved");
+
+        proposals[_proposalID].didPass = true;
         proposals[_proposalID].status = Status.CLOSED;
         token.mint(proposals[_proposalID].target, 1000 ether);
         emit ProposalExecuted(proposal.target, _proposalID);
     }
 
     /**
-     * @dev Create a proposal
-     * @param _target address of the proposal
+     * @dev Returns the proposal votes
      * @param _proposalId proposalId Id that identifies the proposal uniquely
+     * @return yes and no votes count
      */
-    function proposeVote(address _target, string memory _proposalId) external {
-        require(
-            bytes(proposals[_proposalId].proposalID).length == 0,
-            "Proposal already submitted"
-        );
-        proposals[_proposalId].target = _target;
-        proposals[_proposalId].proposalID = _proposalId;
-        proposals[_proposalId].status = Status.OPEN;
-        proposals[_proposalId]
-            .description = "Mint 1000 tokens to target address";
-
-        emit ProposalCreated(_target, _proposalId);
-    }
-
-    /**
-     * @dev Get the proposal result and allow time for value to be disputed
-     * @param _queryId id of desired data feed
-     * @param _timestamp to retrieve data from
-     * @return result of the proposal
-     */
-    function readProposalResultBefore(bytes32 _queryId, uint256 _timestamp)
-        public
+    function getOutcome(string memory _proposalId)
+        external
         view
-        returns (uint256, uint256)
+        returns (bool)
     {
-        // TIP:
-        //For best practices, use getDataBefore with a time buffer to allow
-        // time for a value to be disputed
-        (bool _ifRetrieve, bytes memory _value, ) = getDataBefore(
-            _queryId,
-            _timestamp
-        );
-        require(_ifRetrieve, "must get data to execute vote");
-        uint256[] memory values = abi.decode(_value, (uint256[]));
-
-        return (values[0], values[1]);
+        return (proposals[_proposalId].didPass);
     }
 
     /**
@@ -149,14 +95,6 @@ contract SnapshotVoting is UsingTellor {
      */
     function getTokenAddress() external view returns (address) {
         return address(token);
-    }
-
-    /**
-     * @dev Returns the required quorum votes
-     * @return amount of votes required to execute proposal
-     */
-    function getQuorum() external view returns (uint256) {
-        return quorumVotes;
     }
 
     /**
@@ -173,18 +111,58 @@ contract SnapshotVoting is UsingTellor {
     }
 
     /**
-     * @dev Returns the proposal votes
-     * @param _proposalId proposalId Id that identifies the proposal uniquely
-     * @return yes and no votes count
+     * @dev Marks a proposal as invalid
+     * @param _proposalID proposalId Id that identifies the proposal uniquely
+     * @notice This function is only callable by the arbitrator
      */
-    function getVotes(string memory _proposalId)
-        external
-        view
-        returns (uint256, uint256)
-    {
-        return (
-            proposals[_proposalId].yesVotes,
-            proposals[_proposalId].noVotes
+    function invalidateProposal(string memory _proposalID) external {
+        require(msg.sender == arbitrator, "Only the arbitrator can invalidate");
+        Proposal memory proposal = proposals[_proposalID];
+        require(bytes(proposal.proposalID).length != 0, "Proposal not found");
+        require(proposal.status == Status.OPEN, "Proposal is not valid");
+        proposals[_proposalID].status = Status.INVALID;
+    }
+
+    /**
+     * @dev Create a proposal
+     * @param _target address of the proposal
+     * @param _proposalId proposalId Id that identifies the proposal uniquely
+     */
+    function proposeVote(address _target, string memory _proposalId) external {
+        require(
+            bytes(proposals[_proposalId].proposalID).length == 0,
+            "Proposal already submitted"
         );
+        proposals[_proposalId].target = _target;
+        proposals[_proposalId].proposalID = _proposalId;
+        proposals[_proposalId].status = Status.OPEN;
+        proposals[_proposalId].didPass = false;
+        proposals[_proposalId]
+            .description = "Mint 1000 tokens to target address";
+
+        emit ProposalCreated(_target, _proposalId);
+    }
+
+    /**
+     * @dev Get the proposal result and allow time for value to be disputed
+     * @param _queryId id of desired data feed
+     * @param _timestamp to retrieve data from
+     * @return result of the proposal
+     */
+    function readProposalResultBefore(bytes32 _queryId, uint256 _timestamp)
+        public
+        view
+        returns (bool)
+    {
+        // TIP:
+        //For best practices, use getDataBefore with a time buffer to allow
+        // time for a value to be disputed
+        (bool _ifRetrieve, bytes memory _value, ) = getDataBefore(
+            _queryId,
+            _timestamp
+        );
+        require(_ifRetrieve, "must get data to execute vote");
+        bool _didPass = abi.decode(_value, (bool));
+        return (_didPass);
     }
 }
