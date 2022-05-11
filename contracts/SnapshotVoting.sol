@@ -66,7 +66,7 @@ contract SnapshotVoting is UsingTellor {
         bytes32 _queryID = keccak256(
             abi.encode("Snapshot", abi.encode(_proposalID))
         );
-        bool _didPass = readProposalResultBefore(_queryID, block.timestamp);
+        bool _didPass = readProposalResultBefore(_queryID, block.timestamp - 1 hours);
 
         require(_didPass, "Transaction was not approved");
 
